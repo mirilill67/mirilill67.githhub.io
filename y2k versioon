@@ -1,0 +1,119 @@
+draw(){
+
+  ctx.save();
+
+  ctx.translate(this.x,this.y);
+
+  // Y2K glow
+  ctx.shadowColor = "#ff66ff";
+  ctx.shadowBlur = 35;
+
+  // holographic gradient
+  const grad = ctx.createLinearGradient(
+    -this.size,
+    0,
+    this.size,
+    0
+  );
+
+  grad.addColorStop(0,"#7df9ff");
+  grad.addColorStop(0.25,"#ff7af6");
+  grad.addColorStop(0.5,"#ffffff");
+  grad.addColorStop(0.75,"#c084ff");
+  grad.addColorStop(1,"#6ef3ff");
+
+  // top dome
+  ctx.fillStyle = "#dffcff";
+
+  ctx.beginPath();
+  ctx.ellipse(
+    0,
+    -14,
+    this.size * 0.24,
+    this.size * 0.18,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  // metallic base
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+
+  ctx.ellipse(
+    0,
+    0,
+    this.size * 0.55,
+    this.size * 0.2,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+  // chrome outline
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = "#ffffffaa";
+  ctx.stroke();
+
+  // floating glow ring
+  ctx.beginPath();
+
+  ctx.strokeStyle = "#ff8cff";
+  ctx.lineWidth = 2;
+
+  ctx.ellipse(
+    0,
+    0,
+    this.size * 0.75,
+    this.size * 0.08,
+    0,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.stroke();
+
+  // sparkles
+  for(let i=0;i<5;i++){
+
+    const x =
+      -40 + i * 20;
+
+    ctx.fillStyle =
+      i % 2 === 0
+      ? "#ff6bf2"
+      : "#7dffff";
+
+    ctx.beginPath();
+
+    ctx.arc(
+      x,
+      5,
+      4,
+      0,
+      Math.PI * 2
+    );
+
+    ctx.fill();
+  }
+
+  // star sparkle
+  ctx.strokeStyle = "#ffffff";
+  ctx.lineWidth = 2;
+
+  ctx.beginPath();
+  ctx.moveTo(-this.size * 0.9,-20);
+  ctx.lineTo(-this.size * 0.7,-20);
+
+  ctx.moveTo(-this.size * 0.8,-30);
+  ctx.lineTo(-this.size * 0.8,-10);
+
+  ctx.stroke();
+
+  ctx.restore();
+}
