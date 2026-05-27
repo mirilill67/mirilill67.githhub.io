@@ -1,0 +1,382 @@
+import { useEffect, useRef, useState } from "react";
+
+export default function Home() {
+  const canvasRef = useRef(null);
+  const crosshairRef = useRef(null);
+  const [score, setScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const gameOverRef = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const crosshair = crosshairRef.current;
+    const ships = [];
+    let raf = 0;
+    let currentScore = 0;
+    let spawnInterval = null;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+
+    // Generate stars once
+    const stars = Array.from({ length: 180 }, () => ({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.5 + 0.3,
+      twinkle: Math.random() * Math.PI * 2,
+      speed: 0.02 + Math.random() * 0.03,
+    }));
+
+    // Static planets (relative positions)
+    const planets = [
+      { rx: 0.15, ry: 0.18, r: 28, color: "#c060ff", ringColor: "#ff00ff", hasRing: true },
+      { rx: 0.82, ry: 0.25, r: 18, color: "#00bfff", ringColor: null, hasRing: false },
+      { rx: 0.68, ry: 0.08, r: 10, color: "#ff6633", ringColor: null, hasRing: false },
+    ];
+
+    let tick = 0;
+
+    const drawBackground = () => {
+      // Deep space gradient
+      const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      grad.addColorStop(0, "#020008");
+      grad.addColorStop(1, "#120018");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Stars
+      stars.forEach(s => {
+        s.twinkle += s.speed;
+        const alpha = 0.4 + Math.sin(s.twinkle) * 0.4;
+        ctx.globalAlpha = Math.max(0.05, alpha);
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowBlur = 4;
+        ctx.shadowColor = "#aaaaff";
+        ctx.beginPath();
+        ctx.arc(s.x * canvas.width, s.y * (canvas.height - 80), s.r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+
+      // Planets
+      planets.forEach(p => {
+        const px = p.rx * canvas.width;
+        const py = p.ry * (canvas.height - 80);
+
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = p.color;
+
+        const pgrad = ctx.createRadialGradient(px - p.r * 0.3, py - p.r * 0.3, p.r * 0.1, px, py, p.r);
+        pgrad.addColorStop(0, "#ffffff55");
+        pgrad.addColorStop(0.4, p.color);
+        pgrad.addColorStop(1, "#00000099");
+        ctx.beginPath();
+        ctx.arc(px, py, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = pgrad;
+        ctx.fill();
+
+        if (p.hasRing) {
+          ctx.save();
+          ctx.translate(px, py);
+          ctx.scale(1, 0.3);
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r * 1.7, 0, Math.PI * 2);
+          ctx.strokeStyle = p.ringColor;
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = 0.6;
+          ctx.stroke();
+          ctx.restore();
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.shadowBlur = 0;
+      });
+    };
+
+    const earthY = () => canvas.height - 40;
+
+    const drawEarth = () => {
+      const y = earthY();
+      ctx.fillStyle = "#0a2a0a";
+      ctx.fillRect(0, y, canvas.width, canvas.height - y);
+      ctx.strokeStyle = "#00ff00";
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = "#00ff00";
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#00ff00";
+      ctx.font = '14px "Courier New", monospace';
+      ctx.textAlign = "center";
+      ctx.fillText("EARTH", canvas.width / 2, y + 24);
+    };
+
+    const startSpawning = () => {
+      if (spawnInterval) clearInterval(spawnInterval);
+      spawnInterval = setInterval(() => {
+        if (gameOverRef.current) return;
+        ships.push({
+          x: Math.random() * canvas.width,
+          y: -50,
+          size: 30 + Math.random() * 15,
+          speed: (0.8 + Math.random() * 0.3) * Math.pow(1.5, Math.floor(currentScore / 5)),
+          phase: Math.random() * Math.PI * 2,
+        });
+      }, 900);
+    };
+
+    const drawShip = (s) => {
+      const halfSize = s.size / 2;
+      ctx.fillStyle = "#1a1a1a";
+      ctx.strokeStyle = "#00ffff";
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#ff00ff";
+
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + halfSize * 0.15, s.size, halfSize * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - halfSize * 0.15, halfSize * 0.55, Math.PI, 0);
+      ctx.fillStyle = "#00ffff";
+      ctx.globalAlpha = 0.25;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ff00ff";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y + halfSize * 0.15, halfSize * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff00ff";
+      ctx.shadowColor = "#ff00ff";
+      ctx.shadowBlur = 20;
+      ctx.fill();
+
+      ctx.fillStyle = "#00ffff";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#00ffff";
+      for (let i = -2; i <= 2; i++) {
+        const lx = s.x + i * (s.size * 0.3);
+        const ly = s.y + halfSize * 0.45;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    };
+
+    const endGame = () => {
+      gameOverRef.current = true;
+      setGameOver(true);
+      cancelAnimationFrame(raf);
+      if (spawnInterval) clearInterval(spawnInterval);
+    };
+
+    const update = () => {
+      if (gameOverRef.current) return;
+      tick++;
+      drawBackground();
+      drawEarth();
+
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        s.y += s.speed;
+        const sway = Math.sin(s.y * 0.02 + s.phase) * 30;
+        drawShip({ ...s, x: s.x + sway });
+
+        if (s.y + s.size > earthY()) {
+          endGame();
+          return;
+        }
+        if (s.y > canvas.height + 50) ships.splice(i, 1);
+      }
+      raf = requestAnimationFrame(update);
+    };
+
+    const onClick = (e) => {
+      if (gameOverRef.current) return;
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        const dx = e.clientX - s.x;
+        const dy = e.clientY - s.y;
+        if (Math.sqrt(dx * dx + dy * dy) < s.size) {
+          ships.splice(i, 1);
+          currentScore++;
+          setScore(currentScore);
+          break;
+        }
+      }
+    };
+
+    const onMove = (e) => {
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+    };
+
+    startSpawning();
+    update();
+
+    window.addEventListener("click", onClick);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("resize", resize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (spawnInterval) clearInterval(spawnInterval);
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  const restart = () => {
+    setScore(0);
+    setGameOver(false);
+    gameOverRef.current = false;
+    window.location.reload();
+  };
+
+  return (
+    <div
+      style={{
+        margin: 0,
+        overflow: "hidden",
+        background: "#120018",
+        fontFamily: '"Courier New", monospace',
+        color: "white",
+        height: "100vh",
+        width: "100vw",
+        position: "relative",
+        cursor: "none",
+      }}
+    >
+      <h1
+        style={{
+          position: "absolute",
+          top: 10,
+          width: "100%",
+          textAlign: "center",
+          color: "#ff00ff",
+          textShadow: "0 0 10px #ff00ff, 0 0 20px #00ffff",
+          zIndex: 2,
+          margin: 0,
+        }}
+      >
+        Y2K ALIEN ZONE
+      </h1>
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          width: "100%",
+          textAlign: "center",
+          color: "#00ffff",
+          zIndex: 2,
+        }}
+      >
+        SCORE: {score}
+      </div>
+      <div
+        ref__={crosshairRef}
+        style={{
+          position: "absolute",
+          width: 28,
+          height: 28,
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+          zIndex: 3,
+        }}
+      >
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: 0,
+          width: "100%",
+          height: 2,
+          marginTop: -1,
+          background: "#ff00ff",
+          boxShadow: "0 0 6px 2px #ff00ff, 0 0 12px 4px #ff00ffaa",
+          filter: "blur(0.4px)",
+        }} />
+        <div style={{
+          position: "absolute",
+          left: "50%",
+          top: 0,
+          width: 2,
+          height: "100%",
+          marginLeft: -1,
+          background: "#ff00ff",
+          boxShadow: "0 0 6px 2px #ff00ff, 0 0 12px 4px #ff00ffaa",
+          filter: "blur(0.4px)",
+        }} />
+        <div style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          width: 4,
+          height: 4,
+          marginTop: -2,
+          marginLeft: -2,
+          borderRadius: "50%",
+          background: "#ffffff",
+          boxShadow: "0 0 6px 3px #ff00ff",
+        }} />
+      </div>
+      <canvas ref__={canvasRef} style={{ display: "block" }} />
+
+      {gameOver && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0, 0, 0, 0.85)",
+            zIndex: 10,
+            cursor: "default",
+          }}
+        >
+          <h2 style={{ color: "#ff0000", fontSize: "3rem", textShadow: "0 0 10px #ff0000, 0 0 30px #ff0000", margin: 0 }}>
+            GAME OVER
+          </h2>
+          <p style={{ color: "#ff00ff", fontSize: "1.5rem", textShadow: "0 0 10px #ff00ff", marginTop: 12 }}>
+            YOU LOST
+          </p>
+          <p style={{ color: "#00ffff", marginTop: 8 }}>FINAL SCORE: {score}</p>
+          <button
+            onClick={restart}
+            style={{
+              marginTop: 32,
+              padding: "12px 32px",
+              fontFamily: '"Courier New", monospace',
+              fontSize: "1rem",
+              color: "#00ffff",
+              background: "transparent",
+              border: "2px solid #00ffff",
+              borderRadius: 4,
+              cursor: "pointer",
+              textShadow: "0 0 10px #00ffff",
+              boxShadow: "0 0 10px #00ffff",
+            }}
+          >
+            RESTART
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
