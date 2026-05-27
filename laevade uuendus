@@ -1,0 +1,196 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Y2K Alien Zone" },
+      { name: "description", content: "Shoot alien ships in a neon Y2K arcade." },
+      { property: "og:title", content: "Y2K Alien Zone" },
+      { property: "og:description", content: "Shoot alien ships in a neon Y2K arcade." },
+    ],
+  }),
+  component: Y2KAlienZone,
+});
+
+type Ship = { x: number; y: number; size: number; speed: number };
+
+function Y2KAlienZone() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const crosshairRef = useRef<HTMLDivElement | null>(null);
+  const [score, setScore] = useState(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    const crosshair = crosshairRef.current!;
+    const ships: Ship[] = [];
+    let raf = 0;
+    let currentScore = 0;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+
+    const spawn = setInterval(() => {
+      ships.push({
+        x: Math.random() * canvas.width,
+        y: -50,
+        size: 30 + Math.random() * 20,
+        speed: 1 + Math.random() * 2,
+      });
+    }, 900);
+
+    const drawShip = (s: Ship) => {
+      const halfSize = s.size / 2;
+
+      // saucer body (ellipse-ish)
+      ctx.fillStyle = "#1a1a1a";
+      ctx.strokeStyle = "#00ffff";
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#ff00ff";
+
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + halfSize * 0.15, s.size, halfSize * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // dome on top
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - halfSize * 0.15, halfSize * 0.55, Math.PI, 0);
+      ctx.fillStyle = "#00ffff";
+      ctx.globalAlpha = 0.25;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ff00ff";
+      ctx.stroke();
+
+      // central core glow
+      ctx.beginPath();
+      ctx.arc(s.x, s.y + halfSize * 0.15, halfSize * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff00ff";
+      ctx.shadowColor = "#ff00ff";
+      ctx.shadowBlur = 20;
+      ctx.fill();
+
+      // landing lights (small dots)
+      ctx.fillStyle = "#00ffff";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#00ffff";
+      for (let i = -2; i <= 2; i++) {
+        const lx = s.x + i * (s.size * 0.3);
+        const ly = s.y + halfSize * 0.45;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+    };
+
+    const update = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        s.y += s.speed;
+        drawShip(s);
+        if (s.y > canvas.height + 50) ships.splice(i, 1);
+      }
+      raf = requestAnimationFrame(update);
+    };
+    update();
+
+    const onClick = (e: MouseEvent) => {
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        const dx = e.clientX - s.x;
+        const dy = e.clientY - s.y;
+        if (Math.sqrt(dx * dx + dy * dy) < s.size) {
+          ships.splice(i, 1);
+          currentScore++;
+          setScore(currentScore);
+          break;
+        }
+      }
+    };
+    const onMove = (e: MouseEvent) => {
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+    };
+
+    window.addEventListener("click", onClick);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("resize", resize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      clearInterval(spawn);
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return (
+    <div
+      style={{
+        margin: 0,
+        overflow: "hidden",
+        background: "#120018",
+        fontFamily: '"Courier New", monospace',
+        color: "white",
+        height: "100vh",
+        width: "100vw",
+        position: "relative",
+        cursor: "none",
+      }}
+    >
+      <h1
+        style={{
+          position: "absolute",
+          top: 10,
+          width: "100%",
+          textAlign: "center",
+          color: "#ff00ff",
+          textShadow: "0 0 10px #ff00ff, 0 0 20px #00ffff",
+          zIndex: 2,
+          margin: 0,
+        }}
+      >
+        Y2K ALIEN ZONE
+      </h1>
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          width: "100%",
+          textAlign: "center",
+          color: "#00ffff",
+          zIndex: 2,
+        }}
+      >
+        SCORE: {score}
+      </div>
+      <div
+        ref={crosshairRef}
+        style={{
+          position: "absolute",
+          width: 20,
+          height: 20,
+          border: "2px solid #ff00ff",
+          borderRadius: "50%",
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+          boxShadow: "0 0 10px #ff00ff",
+          zIndex: 3,
+        }}
+      />
+      <canvas ref={canvasRef} style={{ display: "block" }} />
+    </div>
+  );
+}
