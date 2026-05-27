@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Y2K Zone</title>
+
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: #120018; /* dark purple */
+      font-family: "Courier New", monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    /* animated stars */
+    .stars {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(white 1px, transparent 1px);
+      background-size: 50px 50px;
+      opacity: 0.15;
+      animation: moveStars 20s linear infinite;
+    }
+
+    @keyframes moveStars {
+      from { transform: translateY(0); }
+      to { transform: translateY(-100px); }
+    }
+
+    /* center container */
+    .container {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 60px;
+      color: #ff00ff;
+      text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff;
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 10px #ff00ff; }
+      to { text-shadow: 0 0 25px #00ffff; }
+    }
+
+    p {
+      font-size: 18px;
+      color: #00ffff;
+      letter-spacing: 2px;
+    }
+
+    .btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border: 2px solid #ff00ff;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: 0.3s;
+      box-shadow: 0 0 10px #ff00ff;
+    }
+
+    .btn:hover {
+      background: #ff00ff;
+      color: #000;
+      box-shadow: 0 0 20px #00ffff;
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stars"></div>
+
+  <div class="container">
+    <h1>WELCOME TO Y2K ZONE</h1>
+    <p class="blink">SYSTEM ONLINE... ENTER THE CYBER VOID</p>
+
+    <button class="btn" onclick="enterSite()">ENTER</button>
+  </div>
+
+  <script>
+    function enterSite() {
+      alert("🚀 Welcome to the Y2K dimension!");
+      document.body.style.background = "#1a002a";
+    }
+  </script>
+</body>
+</html>
