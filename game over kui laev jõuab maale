@@ -1,0 +1,309 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Y2K Alien Zone" },
+      { name: "description", content: "Shoot alien ships in a neon Y2K arcade." },
+      { property: "og:title", content: "Y2K Alien Zone" },
+      { property: "og:description", content: "Shoot alien ships in a neon Y2K arcade." },
+    ],
+  }),
+  component: Y2KAlienZone,
+});
+
+type Ship = { x: number; y: number; size: number; speed: number; phase: number };
+
+function Y2KAlienZone() {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const crosshairRef = useRef<HTMLDivElement | null>(null);
+  const [score, setScore] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const gameOverRef = useRef(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext("2d")!;
+    const crosshair = crosshairRef.current!;
+    const ships: Ship[] = [];
+    let raf = 0;
+    let currentScore = 0;
+    let spawnInterval: ReturnType<typeof setInterval> | null = null;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+
+    const earthY = () => canvas.height - 40;
+
+    const drawEarth = () => {
+      const y = earthY();
+      ctx.fillStyle = "#0a2a0a";
+      ctx.fillRect(0, y, canvas.width, canvas.height - y);
+      ctx.strokeStyle = "#00ff00";
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = "#00ff00";
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(canvas.width, y);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#00ff00";
+      ctx.font = '14px "Courier New", monospace';
+      ctx.textAlign = "center";
+      ctx.fillText("EARTH", canvas.width / 2, y + 24);
+    };
+
+    const startSpawning = () => {
+      if (spawnInterval) clearInterval(spawnInterval);
+      spawnInterval = setInterval(() => {
+        if (gameOverRef.current) return;
+        ships.push({
+          x: canvas.width / 2 + (Math.random() - 0.5) * 40,
+          y: -50,
+          size: 30 + Math.random() * 15,
+          speed: 1.5 + Math.random() * 0.5,
+          phase: Math.random() * Math.PI * 2,
+        });
+      }, 900);
+    };
+
+    const drawShip = (s: Ship) => {
+      const halfSize = s.size / 2;
+
+      ctx.fillStyle = "#1a1a1a";
+      ctx.strokeStyle = "#00ffff";
+      ctx.lineWidth = 2;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#ff00ff";
+
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y + halfSize * 0.15, s.size, halfSize * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - halfSize * 0.15, halfSize * 0.55, Math.PI, 0);
+      ctx.fillStyle = "#00ffff";
+      ctx.globalAlpha = 0.25;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "#ff00ff";
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(s.x, s.y + halfSize * 0.15, halfSize * 0.2, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff00ff";
+      ctx.shadowColor = "#ff00ff";
+      ctx.shadowBlur = 20;
+      ctx.fill();
+
+      ctx.fillStyle = "#00ffff";
+      ctx.shadowBlur = 8;
+      ctx.shadowColor = "#00ffff";
+      for (let i = -2; i <= 2; i++) {
+        const lx = s.x + i * (s.size * 0.3);
+        const ly = s.y + halfSize * 0.45;
+        ctx.beginPath();
+        ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.shadowBlur = 0;
+    };
+
+    const endGame = () => {
+      gameOverRef.current = true;
+      setGameOver(true);
+      cancelAnimationFrame(raf);
+      if (spawnInterval) clearInterval(spawnInterval);
+    };
+
+    const update = () => {
+      if (gameOverRef.current) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawEarth();
+
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        s.y += s.speed;
+        const sway = Math.sin(s.y * 0.02 + s.phase) * 30;
+        drawShip({ ...s, x: s.x + sway });
+
+        if (s.y + s.size > earthY()) {
+          endGame();
+          return;
+        }
+
+        if (s.y > canvas.height + 50) ships.splice(i, 1);
+      }
+      raf = requestAnimationFrame(update);
+    };
+
+    const onClick = (e: MouseEvent) => {
+      if (gameOverRef.current) return;
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+      for (let i = ships.length - 1; i >= 0; i--) {
+        const s = ships[i];
+        const dx = e.clientX - s.x;
+        const dy = e.clientY - s.y;
+        if (Math.sqrt(dx * dx + dy * dy) < s.size) {
+          ships.splice(i, 1);
+          currentScore++;
+          setScore(currentScore);
+          break;
+        }
+      }
+    };
+
+    const onMove = (e: MouseEvent) => {
+      crosshair.style.left = e.clientX + "px";
+      crosshair.style.top = e.clientY + "px";
+    };
+
+    const onResize = () => {
+      resize();
+    };
+
+    startSpawning();
+    update();
+
+    window.addEventListener("click", onClick);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      if (spawnInterval) clearInterval(spawnInterval);
+      window.removeEventListener("click", onClick);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("resize", onResize);
+    };
+  }, []);
+
+  const restart = () => {
+    setScore(0);
+    setGameOver(false);
+    gameOverRef.current = false;
+    window.location.reload();
+  };
+
+  return (
+    <div
+      style={{
+        margin: 0,
+        overflow: "hidden",
+        background: "#120018",
+        fontFamily: '"Courier New", monospace',
+        color: "white",
+        height: "100vh",
+        width: "100vw",
+        position: "relative",
+        cursor: "none",
+      }}
+    >
+      <h1
+        style={{
+          position: "absolute",
+          top: 10,
+          width: "100%",
+          textAlign: "center",
+          color: "#ff00ff",
+          textShadow: "0 0 10px #ff00ff, 0 0 20px #00ffff",
+          zIndex: 2,
+          margin: 0,
+        }}
+      >
+        Y2K ALIEN ZONE
+      </h1>
+      <div
+        style={{
+          position: "absolute",
+          top: 60,
+          width: "100%",
+          textAlign: "center",
+          color: "#00ffff",
+          zIndex: 2,
+        }}
+      >
+        SCORE: {score}
+      </div>
+      <div
+        ref={crosshairRef}
+        style={{
+          position: "absolute",
+          width: 20,
+          height: 20,
+          border: "2px solid #ff00ff",
+          borderRadius: "50%",
+          transform: "translate(-50%, -50%)",
+          pointerEvents: "none",
+          boxShadow: "0 0 10px #ff00ff",
+          zIndex: 3,
+        }}
+      />
+      <canvas ref={canvasRef} style={{ display: "block" }} />
+
+      {gameOver && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0, 0, 0, 0.85)",
+            zIndex: 10,
+            cursor: "default",
+          }}
+        >
+          <h2
+            style={{
+              color: "#ff0000",
+              fontSize: "3rem",
+              textShadow: "0 0 10px #ff0000, 0 0 30px #ff0000",
+              margin: 0,
+            }}
+          >
+            GAME OVER
+          </h2>
+          <p
+            style={{
+              color: "#ff00ff",
+              fontSize: "1.5rem",
+              textShadow: "0 0 10px #ff00ff",
+              marginTop: 12,
+            }}
+          >
+            YOU LOST
+          </p>
+          <p style={{ color: "#00ffff", marginTop: 8 }}>FINAL SCORE: {score}</p>
+          <button
+            onClick={restart}
+            style={{
+              marginTop: 32,
+              padding: "12px 32px",
+              fontFamily: '"Courier New", monospace',
+              fontSize: "1rem",
+              color: "#00ffff",
+              background: "transparent",
+              border: "2px solid #00ffff",
+              borderRadius: 4,
+              cursor: "pointer",
+              textShadow: "0 0 10px #00ffff",
+              boxShadow: "0 0 10px #00ffff",
+            }}
+          >
+            RESTART
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
