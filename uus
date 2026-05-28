@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Y2K: Alien Space Interceptor (Click to Shoot)</title>
+  
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script>
+    const { useState, useEffect, useRef } = React;
+    const e = React.createElement;
+
+    function Y2KAlienGame() {
+      const [gameState, setGameState] = useState("START");
+      const [score, setScore] = useState(0);
+
+      const canvasRef = useRef(null);
+      const player = useRef({ x: 185, y: 440, width: 30, height: 25, speed: 8 });
+      const keys = useRef({ Left: false, Right: false, Space: false });
+      const lasers = useRef([]);
+      const aliens = useRef([]);
+      const lastFired = useRef(0);
+
+      // Handle Keyboard Controls
+      useEffect(() => {
+        const handleKeyDown = (ev) => {
+          if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") keys.current.Left = true;
+          if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") keys.current.Right = true;
+          if (ev.key === " " || ev.code === "Space") keys.current.Space = true;
+        };
+
+        const handleKeyUp = (ev) => {
+          if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") keys.current.Left = false;
+          if (ev.key === "ArrowRight" || ev.key === "d" || ev.key === "D") keys.current.Right = false;
+          if (ev.key === " " || ev.code === "Space") keys.current.Space = false;
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        return () => {
+          window.removeEventListener("keydown", handleKeyDown);
+          window.removeEventListener("keyup", handleKeyUp);
+        };
+      }, []);
+
+      // NEW: Handle Mouse Clicks on the Canvas to Shoot Aliens Directly
+      const handleCanvasClick = (event) => {
+        if (gameState !== "PLAYING" || !canvasRef.current) return;
+
+        // Get exact mouse coordinates relative to the canvas boundaries
+        const rect = canvasRef.current.getBoundingClientRect();
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
+
+        // Check if the click coordinates hit any active alien space ship
+        aliens.current = aliens.current.filter(alien => {
+          const clickedAlien = 
+            mouseX >= alien.x &&
+            mouseX <= alien.x + alien.width &&
+            mouseY >= alien.y &&
+            mouseY <= alien.y + alien.height;
+
+          if (clickedAlien) {
+            setScore(prev => prev + 100); // Award points for manual targeting override
+            return false; // Remove the targeted alien from the array
+          }
+          return true; // Keep alien alive if missed
+        });
+      };
+
+      // Core Game Engine Frame Loop
+      useEffect(() => {
+        if (gameState !== "PLAYING") return;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        let animationFrameId;
+
+        canvas.width = 400;
+        canvas.height = 500;
+
+        const loop = () => {
+          const now = Date.now();
+
+          // Move Player
+          if (keys.current.Left && player.current.x > 0) {
+            player.current.x -= player.current.speed;
+          }
+          if (keys.current.Right && player.current.x < canvas.width - player.current.width) {
+            player.current.x += player.current.speed;
+          }
+
+          // Weapon Deployment
+          if (keys.current.Space && now - lastFired.current > 200) {
+            lasers.current.push({
+              x: player.current.x + player.current.width / 2 - 2,
+              y: player.current.y,
+              width: 4,
+              height: 14,
+              speed: 11
+            });
+            lastFired.current = now;
+          }
+
+          // Spawning Matrix for Alien Space Ships
+          if (Math.random() < 0.03) {
+            aliens.current.push({
+              x: Math.random() * (canvas.width - 32),
+              y: -25,
+              width: 32,
+              height: 22,
+              speed: 3.0 + Math.random() * 2.5 
+            });
+          }
+
+          lasers.current = lasers.current.filter(laser => {
+            laser.y -= laser.speed;
+            return laser.y > 0;
+          });
+
+          let terminalBreach = false;
+
+          aliens.current = aliens.current.filter(alien => {
+            alien.y += alien.speed;
+
+            const boundaryBreach = alien.y > canvas.height;
+            const kineticImpact = 
+              alien.x < player.current.x + player.current.width &&
+              alien.x + alien.width > player.current.x &&
+              alien.y < player.current.y + player.current.height &&
+              alien.y + alien.height > player.current.y;
+
+            if (boundaryBreach || kineticImpact) {
+              terminalBreach = true;
+              return false;
+            }
+
+            let alienSurvived = true;
+            lasers.current = lasers.current.filter(laser => {
+              const insideTarget = 
+                laser.x < alien.x + alien.width &&
+                laser.x + laser.width > alien.x &&
+                laser.y < alien.y + alien.height &&
+                laser.y + laser.height > alien.y;
+
+              if (insideTarget) {
+                setScore(prev => prev + 100);
+                alienSurvived = false;
+                return false;
+              }
+              return true;
+            });
+
+            return alienSurvived;
+          });
+
+          if (terminalBreach) {
+            setGameState("GAMEOVER");
+            return;
+          }
+
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Player Triangle
+          ctx.fillStyle = "#00ffcc";
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "#00ffcc";
+          ctx.beginPath();
+          ctx.moveTo(player.current.x + player.current.width / 2, player.current.y);
+          ctx.lineTo(player.current.x, player.current.y + player.current.height);
+          ctx.lineTo(player.current.x + player.current.width, player.current.y + player.current.height);
+          ctx.closePath();
+          ctx.fill();
+
+          // Lasers
+          ctx.fillStyle = "#00ffff";
+          ctx.shadowColor = "#00ffff";
+          lasers.current.forEach(laser => {
+            ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+          });
+
+          // Alien Ships
+          ctx.fillStyle = "#ff00ff";
+          ctx.shadowColor = "#ff00ff";
+          aliens.current.forEach(alien => {
+            ctx.fillRect(alien.x + 4, alien.y, alien.width - 8, 6);
+            ctx.fillRect(alien.x, alien.y + 6, alien.width, 8);
+            ctx.fillRect(alien.x + 2, alien.y + 14, 6, 6);
+            ctx.fillRect(alien.x + alien.width - 8, alien.y + 14, 6, 6);
+            ctx.fillRect(alien.x + 8, alien.y + 20, 4, 2);
+            ctx.fillRect(alien.x + alien.width - 12, alien.y + 20, 4, 2);
+          });
+
+          ctx.shadowBlur = 0;
+          animationFrameId = requestAnimationFrame(loop);
+        };
+
+        animationFrameId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(animationFrameId);
+      }, [gameState]);
+
+      const startMatch = () => {
+        setScore(0);
+        lasers.current = [];
+        aliens.current = [];
+        player.current.x = 185;
+        setGameState("PLAYING");
+      };
+
+      const setNeonStyles = (event, isHovered) => {
+        event.currentTarget.style.background = isHovered ? "#ff00ff" : "transparent";
+        event.currentTarget.style.color = isHovered ? "#000000" : "#ffffff";
+        event.currentTarget.style.boxShadow = isHovered ? "0 0 20px #00ffff" : "0 0 10px #ff00ff";
+      };
+
+      return e('div', { style: styles.body },
+        e('div', { style: styles.stars }),
+        e('style', null, cssKeyframes),
+        e('div', { style: styles.viewContainer },
+          e('h1', { style: styles.mainTitle }, "CYBER DEFENDER Y2K"),
+          
+          gameState === "START" && e('div', { style: styles.uiBox },
+            e('p', { style: { ...styles.subtitle, ...styles.blinkEffect } }, "HYPER-SPEED INVASION DETECTED... ENGAGE!"),
+            e('button', {
+              style: styles.actionBtn,
+              onClick: startMatch,
+              onMouseOver: (evt) => setNeonStyles(evt, true),
+              onMouseOut: (evt) => setNeonStyles(evt, false)
+            }, "INITIALIZE MATRIX")
+          ),
+
+          gameState === "PLAYING" && e('div', { style: styles.gameWrapper },
+            e('div', { style: styles.hudPanel },
+              e('span', null, `SCORE: ${String(score).padStart(5, "0")}`),
+              e('span', { style: { color: "#00ffcc" } }, "TARGETING LOCK: READY")
+            ),
+            e('div', { style: styles.canvasContainer },
+              e('canvas', { 
+                ref: canvasRef, 
+                style: styles.gameCanvas,
+                onClick: handleCanvasClick // Added mouse target click handling event
+              })
+            ),
+            e('p', { style: styles.controlLabel }, "[A/D or ◀/▶] MOVE | [SPACE] SHOOT | OR CLICK SHIPS DIRECTLY")
+          ),
+
+          gameState === "GAMEOVER" && e('div', { style: styles.uiBox },
+            e('h2', { style: styles.defeatHeader }, "SYSTEM OVERRIDE"),
+            e('p', { style: { color: "#ffffff", marginBottom: "25px", fontSize: "14px" } }, 
+              "Alien crafts successfully breached your vector frame.", e('br'), `Final Output Score: ${score}`
+            ),
+            e('button', {
+              style: styles.actionBtn,
+              onClick: startMatch,
+              onMouseOver: (evt) => setNeonStyles(evt, true),
+              onMouseOut: (evt) => setNeonStyles(evt, false)
+            }, "REBOOT CORE SYSTEM")
+          )
+        )
+      );
+    }
+
+    const styles = {
+      body: { margin: 0, height: "100vh", backgroundColor: "#120018", fontFamily: '"Courier New", monospace', color: "#ffffff", overflow: "hidden", position: "relative" },
+      stars: { position: "absolute", width: "100%", height: "100%", background: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "60px 60px", opacity: 0.12, animation: "scrollStars 25s linear infinite" },
+      viewContainer: { position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 2 },
+      mainTitle: { fontSize: "38px", color: "#ff00ff", margin: "0 0 15px 0", letterSpacing: "3px", textTransform: "uppercase", animation: "neonPulse 2s infinite alternate", textAlign: "center" },
+      uiBox: { textAlign: "center", padding: "20px" },
+      subtitle: { fontSize: "15px", color: "#00ffff", letterSpacing: "2px", marginBottom: "30px" },
+      blinkEffect: { animation: "terminalBlink 1s infinite" },
+      actionBtn: { padding: "12px 35px", border: "2px solid #ff00ff", background: "transparent", color: "#ffffff", cursor: "pointer", textTransform: "uppercase", fontFamily: '"Courier New", monospace', fontWeight: "bold", fontSize: "14px", letterSpacing: "1px", transition: "all 0.2s ease-in-out", boxShadow: "0 0 10px #ff00ff" },
+      gameWrapper: { display: "flex", flexDirection: "column", alignItems: "center" },
+      hudPanel: { width: "400px", display: "flex", justifyContent: "space-between", padding: "12px", border: "2px solid #00ffff", borderBottom: "none", background: "#08000c", color: "#00ffff", boxSizing: "border-box", fontWeight: "bold", fontSize: "14px" },
+      canvasContainer: { position: "relative", width: "400px", height: "500px" },
+      gameCanvas: { border: "2px solid #00ffff", background: "#0a000f", boxShadow: "0 0 25px rgba(0, 255, 255, 0.25)", cursor: "crosshair" }, // Added crosshair cursor for aiming preference
+      defeatHeader: { fontSize: "36px", color: "#ff0033", margin: "0 0 15px 0", textShadow: "0 0 12px #ff0033", letterSpacing: "2px" },
+      controlLabel: { fontSize: "11px", color: "#ff00ff", marginTop: "12px", letterSpacing: "1px" }
+    };
+
+    const cssKeyframes = `
+      @keyframes scrollStars { from { transform: translateY(0); } to { transform: translateY(-120px); } }
+      @keyframes neonPulse { from { text-shadow: 0 0 8px #ff00ff; } to { text-shadow: 0 0 22px #00ffff; } }
+      @keyframes terminalBlink { 50% { opacity: 0; } }
+    `;
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(e(Y2KAlienGame));
+  </script>
+</body>
+</html>
