@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Y2K: Global Defense Matrix (Protect Our World)</title>
+  <title>Y2K: Global Defense Matrix (Retro HUD)</title>
   
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -26,15 +26,14 @@
       });
 
       const canvasRef = useRef(null);
-      // Increased dynamic range of player movement/speed for defense
       const player = useRef({ x: 185, y: 410, width: 30, height: 25, speed: 8.5 });
       const keys = useRef({ Left: false, Right: false, Space: false });
       const lasers = useRef([]);
       const aliens = useRef([]);
       const lastFired = useRef(0);
       
-      // NEW: State variables to track the globe rotation frame rate
-      const [globeRotationOffset, setGlobeRotationOffset] = useState(0);
+      // NEW: Tracking mouse positioning for drawing the custom Y2K crosshair HUD
+      const mousePos = useRef({ x: -100, y: -100 });
       const globeRotationRef = useRef(0);
 
       const scoreRef = useRef(0);
@@ -42,7 +41,7 @@
         scoreRef.current = score;
       }, [score]);
 
-      // Handle Keyboard Input Buffers
+      // Keyboard Input Map Listener Loops
       useEffect(() => {
         const handleKeyDown = (ev) => {
           if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") keys.current.Left = true;
@@ -75,6 +74,7 @@
         });
       };
 
+      // Handle click logic based on the custom vector coordinate frame
       const handleCanvasClick = (event) => {
         if (gameState !== "PLAYING" || !canvasRef.current) return;
 
@@ -97,6 +97,16 @@
         });
       };
 
+      // NEW: Capture custom mouse coordinates inside canvas view coordinate matrix 
+      const handleMouseMove = (event) => {
+        if (!canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        mousePos.current = {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      };
+
       // Core Game Engine Frame Loop
       useEffect(() => {
         if (gameState !== "PLAYING") return;
@@ -106,14 +116,13 @@
         const ctx = canvas.getContext("2d");
         let animationFrameId;
 
-        // Dynamic matrix configuration parameters
         canvas.width = 400;
         canvas.height = 500;
 
         const loop = () => {
           const now = Date.now();
 
-          // Smooth Player Vessel Translation
+          // Move Player
           if (keys.current.Left && player.current.x > 0) {
             player.current.x -= player.current.speed;
           }
@@ -121,31 +130,28 @@
             player.current.x += player.current.speed;
           }
 
-          // Main Laser Deployment Matrix
-          if (keys.current.Space && now - lastFired.current > 180) { // Slightly increased rate of fire to match tempo
+          // Laser Fire Matrix Control
+          if (keys.current.Space && now - lastFired.current > 180) {
             lasers.current.push({
               x: player.current.x + player.current.width / 2 - 2,
               y: player.current.y,
               width: 4,
               height: 14,
-              speed: 12 // Fast laser travel speed
+              speed: 12
             });
             lastFired.current = now;
           }
 
-          // Evolving Fleet Deployment Limits (Staggered scaling)
-          const maxAliensOnScreen = 1 + Math.floor(scoreRef.current / 400); // Higher density for faster progression
+          // Evolving Fleet Spawn Limits
+          const maxAliensOnScreen = 1 + Math.floor(scoreRef.current / 400);
 
-          // Only attempt to spawn new ships if the active fleet is below the limit threshold
           if (aliens.current.length < maxAliensOnScreen) {
-            // Random chance parameter to introduce staggered spawn groupings
-            if (Math.random() < 0.06) { // More consistent spawning for intensity
+            if (Math.random() < 0.06) {
               aliens.current.push({
                 x: Math.random() * (canvas.width - 32),
                 y: -25,
                 width: 32,
                 height: 22,
-                // Higher alien baseline velocity range for intense defensive gameplay
                 speed: 2.5 + Math.random() * 2.2 
               });
             }
@@ -161,8 +167,6 @@
           aliens.current = aliens.current.filter(alien => {
             alien.y += alien.speed;
 
-            // Globe Reach Collision Detection (GAME OVER State Trigger)
-            // End the game immediately if an alien reaches the vulnerable sphere
             const globeBreachHeight = canvas.height - 40; 
             if (alien.y > globeBreachHeight) {
               terminalGlobalBreach = true;
@@ -204,201 +208,15 @@
             return;
           }
           
-          // Increment the rotation loop counter for the globe object
           globeRotationRef.current += 0.012;
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // RENDER: Stylized Y2K Rotating Cyber Globe (Protect This Matrix Object)
+          // RENDER: Stylized Y2K Rotating Cyber Globe Object
           const drawCyberGlobe = () => {
             const centerX = canvas.width / 2;
             const centerY = canvas.height - 10;
-            const radius = 60; // Standard matrix scale globe radius
+            const radius = 60;
 
-            // Define Global Render styles (Aesthetic glowing blue sphere profile)
             ctx.shadowBlur = 15;
-            ctx.shadowColor = "#00ffff"; // Main cyan/blue neon glow layer
-            ctx.fillStyle = "rgba(0, 255, 255, 0.15)"; // Soft blue sphere matrix core
-            ctx.beginPath();
-            ctx.arc(centerX, centerY, radius, Math.PI, 0); // Arc defined baseline (half-sphere)
-            ctx.fill();
-
-            // Clear glow blur layer cache
-            ctx.shadowBlur = 0; 
-            ctx.strokeStyle = "#00ffff"; // Glowing grid lines structure color definition
-            ctx.lineWidth = 1;
-
-            // Draw dynamic latitude line matrix structure (Staggered arcs)
-            for (let lat = 10; lat <= radius - 10; lat += 15) {
-              const span = radius - lat;
-              const angle = Math.acos(span / radius);
-              const chordLength = Math.sin(angle) * radius;
-              
-              ctx.beginPath();
-              // Adjust baseline latitude arc geometry for 3D sphere perspective simulation
-              ctx.arc(centerX, centerY, chordLength, Math.PI, 0, false);
-              ctx.stroke();
-            }
-
-            // Draw rotating longitude line matrix structure (Simulates rotation frame loop)
-            const numLines = 8;
-            for (let i = 0; i < numLines; i++) {
-              // Calculate dynamic angular line projection offsets with continuous rotation multiplier
-              const angleOffset = (i / numLines * Math.PI * 2) + globeRotationRef.current;
-              // Adjust the curve parameter to change line distortion profile
-              const curveParam = radius / 2 * Math.sin(angleOffset);
-              
-              ctx.beginPath();
-              ctx.moveTo(centerX - radius, centerY);
-              // Use quadratic curves to define the meridian line profile matrix
-              ctx.quadraticCurveTo(centerX + curveParam * 2, centerY - radius * 1.6, centerX + radius, centerY);
-              ctx.stroke();
-            }
-            
-            // Baseline object terminator boundary line definition
-            ctx.beginPath();
-            ctx.moveTo(centerX - radius, centerY);
-            ctx.lineTo(centerX + radius, centerY);
-            ctx.stroke();
-          };
-          
-          drawCyberGlobe(); // Fire the globe object render logic function loop
-
-          // RENDER: Player Vessel (Cyan Plasma Triangle Profile configuration)
-          ctx.fillStyle = "#00ffcc";
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "#00ffcc";
-          ctx.beginPath();
-          ctx.moveTo(player.current.x + player.current.width / 2, player.current.y);
-          ctx.lineTo(player.current.x, player.current.y + player.current.height);
-          ctx.lineTo(player.current.x + player.current.width, player.current.y + player.current.height);
-          ctx.closePath();
-          ctx.fill();
-
-          // RENDER: Plasma Lasers (Glowing Blue Beam Profile)
-          ctx.fillStyle = "#00ffff";
-          ctx.shadowColor = "#00ffff";
-          lasers.current.forEach(laser => {
-            ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
-          });
-
-          // RENDER: Alien Invasion Ships (Y2K Neon Magenta Geometric Invader Chassis profile)
-          ctx.fillStyle = "#ff00ff";
-          ctx.shadowColor = "#ff00ff";
-          aliens.current.forEach(alien => {
-            // Primary geometric invader geometry outline matrix
-            ctx.fillRect(alien.x + 4, alien.y, alien.width - 8, 6);
-            ctx.fillRect(alien.x, alien.y + 6, alien.width, 8);
-            ctx.fillRect(alien.x + 2, alien.y + 14, 6, 6);
-            ctx.fillRect(alien.x + alien.width - 8, alien.y + 14, 6, 6);
-            ctx.fillRect(alien.x + 8, alien.y + 20, 4, 2);
-            ctx.fillRect(alien.x + alien.width - 12, alien.y + 20, 4, 2);
-          });
-
-          // Clear global shadow layer cache buffer entirely
-          ctx.shadowBlur = 0;
-          animationFrameId = requestAnimationFrame(loop);
-        };
-
-        animationFrameId = requestAnimationFrame(loop);
-        return () => cancelAnimationFrame(animationFrameId);
-      }, [gameState, highScore]);
-
-      const startMatch = () => {
-        setScore(0);
-        scoreRef.current = 0;
-        lasers.current = [];
-        aliens.current = [];
-        player.current.x = 185;
-        setGameState("PLAYING");
-      };
-
-      const setNeonStyles = (event, isHovered) => {
-        event.currentTarget.style.background = isHovered ? "#ff00ff" : "transparent";
-        event.currentTarget.style.color = isHovered ? "#000000" : "#ffffff";
-        event.currentTarget.style.boxShadow = isHovered ? "0 0 20px #00ffff" : "0 0 10px #ff00ff";
-      };
-
-      // Current difficulty tier multiplier evaluation function for UI info readout label
-      const activeMultiplier = 1 + Math.floor(score / 400);
-
-      return e('div', { style: styles.body },
-        e('div', { style: styles.stars }),
-        e('style', null, cssKeyframes),
-        e('div', { style: styles.viewContainer },
-          // Title revised to match narrative storyline (Global Defense Matrix configuration)
-          e('h1', { style: styles.mainTitle }, "GLOBAL DEFENDER Y2K"),
-          
-          gameState === "START" && e('div', { style: styles.uiBox },
-            e('p', { style: { ...styles.subtitle, ...styles.blinkEffect } }, "INVASION CONFIRMED... THE GLOBE IS IN DANGER!"),
-            e('p', { style: { color: "#00ffcc", fontSize: "14px", marginBottom: "30px" } }, `DEFENSE RECORD: ${String(highScore).padStart(5, "0")} UNITS SAVED`),
-            e('button', {
-              style: styles.actionBtn,
-              onClick: startMatch,
-              onMouseOver: (evt) => setNeonStyles(evt, true),
-              onMouseOut: (evt) => setNeonStyles(evt, false)
-            }, "DEPLOY PLASMA NETWORK")
-          ),
-
-          gameState === "PLAYING" && e('div', { style: styles.gameWrapper },
-            e('div', { style: styles.hudPanel },
-              e('div', { style: { display: "flex", flexDirection: "column" } },
-                e('span', null, `SAVED: ${String(score).padStart(5, "0")} UNITS`),
-                e('span', { style: { fontSize: "11px", color: "#ff00ff", marginTop: "2px" } }, `HI-SCORE: ${String(highScore).padStart(5, "0")}`)
-              ),
-              e('span', { style: { color: "#00ffcc", textAlign: "right" } }, "PROTECTING OUR WORLD")
-            ),
-            e('div', { style: styles.canvasContainer },
-              e('canvas', { 
-                ref: canvasRef, 
-                style: styles.gameCanvas,
-                onClick: handleCanvasClick 
-              })
-            ),
-            e('p', { style: styles.controlLabel }, "[A/D or ◀/▶] MOVE | [SPACE] SHOOT | CLICK SHIPS DIRECTLY")
-          ),
-
-          gameState === "GAMEOVER" && e('div', { style: styles.uiBox },
-            // GAME OVER narrative adjusted to reflect storyline (BREACHED state)
-            e('h2', { style: styles.defeatHeader }, "GLOBE BREACHED!"),
-            e('p', { style: { color: "#ffffff", marginBottom: "10px", fontSize: "15px" } }, `Alien forces have made contact with the matrix core.`),
-            e('p', { style: { color: "#00ffff", marginBottom: "25px", fontSize: "13px" } }, score >= highScore && score > 0 ? "🔥 NEW LOCAL DEFENSE NETWORK RECORD ACTIVE!" : `Your Final Defense Tally: ${score}`),
-            e('button', {
-              style: styles.actionBtn,
-              onClick: startMatch,
-              onMouseOver: (evt) => setNeonStyles(evt, true),
-              onMouseOut: (evt) => setNeonStyles(evt, false)
-            }, "REBOOT DEFENSE PROTOCOLS")
-          )
-        )
-      );
-    }
-
-    const styles = {
-      body: { margin: 0, height: "100vh", backgroundColor: "#120018", fontFamily: '"Courier New", monospace', color: "#ffffff", overflow: "hidden", position: "relative" },
-      stars: { position: "absolute", width: "100%", height: "100%", background: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "60px 60px", opacity: 0.12, animation: "scrollStars 25s linear infinite" },
-      viewContainer: { position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 2 },
-      mainTitle: { fontSize: "38px", color: "#ff00ff", margin: "0 0 15px 0", letterSpacing: "3px", textTransform: "uppercase", animation: "neonPulse 2s infinite alternate", textAlign: "center" },
-      uiBox: { textAlign: "center", padding: "20px" },
-      subtitle: { fontSize: "15px", color: "#00ffff", letterSpacing: "2px", marginBottom: "10px" },
-      blinkEffect: { animation: "terminalBlink 1s infinite" },
-      actionBtn: { padding: "12px 35px", border: "2px solid #ff00ff", background: "transparent", color: "#ffffff", cursor: "pointer", textTransform: "uppercase", fontFamily: '"Courier New", monospace', fontWeight: "bold", fontSize: "14px", letterSpacing: "1px", transition: "all 0.2s ease-in-out", boxShadow: "0 0 10px #ff00ff" },
-      gameWrapper: { display: "flex", flexDirection: "column", alignItems: "center" },
-      hudPanel: { width: "400px", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 12px", border: "2px solid #00ffff", borderBottom: "none", background: "#08000c", color: "#00ffff", boxSizing: "border-box", fontWeight: "bold", fontSize: "14px" },
-      canvasContainer: { position: "relative", width: "400px", height: "500px" },
-      gameCanvas: { border: "2px solid #00ffff", background: "#0a000f", boxShadow: "0 0 25px rgba(0, 255, 255, 0.25)", cursor: "crosshair" },
-      defeatHeader: { fontSize: "36px", color: "#ff0033", margin: "0 0 15px 0", textShadow: "0 0 12px #ff0033", letterSpacing: "2px" },
-      controlLabel: { fontSize: "11px", color: "#ff00ff", marginTop: "12px", letterSpacing: "1px" }
-    };
-
-    const cssKeyframes = `
-      @keyframes scrollStars { from { transform: translateY(0); } to { transform: translateY(-120px); } }
-      @keyframes neonPulse { from { text-shadow: 0 0 8px #ff00ff; } to { text-shadow: 0 0 22px #00ffff; } }
-      @keyframes terminalBlink { 50% { opacity: 0; } }
-    `;
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(e(Y2KAlienGame));
-  </script>
-</body>
-</html>
+            ctx.shadowColor = "#00ffff
