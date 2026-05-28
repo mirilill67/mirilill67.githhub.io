@@ -1,1 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Y2K Zone</title>
 
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      background: #120018; /* dark purple */
+      font-family: "Courier New", monospace;
+      color: #fff;
+      overflow: hidden;
+    }
+
+    /* animated stars */
+    .stars {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(white 1px, transparent 1px);
+      background-size: 50px 50px;
+      opacity: 0.15;
+      animation: moveStars 20s linear infinite;
+    }
+
+    @keyframes moveStars {
+      from { transform: translateY(0); }
+      to { transform: translateY(-100px); }
+    }
+
+    /* center container */
+    .container {
+      position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 60px;
+      color: #ff00ff;
+      text-shadow: 0 0 10px #ff00ff, 0 0 20px #00ffff;
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 10px #ff00ff; }
+      to { text-shadow: 0 0 25px #00ffff; }
+    }
+
+    p {
+      font-size: 18px;
+      color: #00ffff;
+      letter-spacing: 2px;
+    }
+
+    .btn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      border: 2px solid #ff00ff;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: 0.3s;
+      box-shadow: 0 0 10px #ff00ff;
+    }
+
+    .btn:hover {
+      background: #ff00ff;
+      color: #000;
+      box-shadow: 0 0 20px #00ffff;
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stars"></div>
+
+  <div class="container">
+    <h1>WELCOME TO Y2K ZONE</h1>
+    <p class="blink">SYSTEM ONLINE... ENTER THE CYBER VOID</p>
+
+    <button class="btn" onclick="enterSite()">ENTER</button>
+  </div>
+
+  <script>
+    function enterSite() {
+      alert("🚀 Welcome to the Y2K dimension!");
+      document.body.style.background = "#1a002a";
+    }
+  </script>
+</body>
+</html> 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Y2K Alien Interceptor</title>
+  
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function AlienGame() {
+      const [isEntered, setIsEntered] = useState(false);
+      const [score, setScore] = useState(0);
+      const [gameOver, setGameOver] = useState(false);
+
+      const canvasRef = useRef(null);
+      
+      // Game State Trackers (using refs to maintain persistent data inside the requestAnimationFrame loop)
+      const playerRef = useRef({ x: 185, y: 450, width: 30, height: 25, speed: 6 });
+      const keysRef = useRef({ Left: false, Right: false, Space: false });
+      const lasersRef = useRef([]); // { x, y, width, height, speed }
+      const aliensRef = useRef([]); // { x, y, width, height, speed, health }
+      const lastShotRef = useRef(0); // Cooldown for shooting
+
+      const handleEnterSite = () => {
+        setIsEntered(true);
+      };
+
+      const resetGame = () => {
+        setScore(0);
+        setGameOver(false);
+        lasersRef.current = [];
+        aliensRef.current = [];
+        playerRef.current.x = 185;
+      };
+
+      // Handle Controls
+      useEffect(() => {
+        const handleKeyDown = (e) => {
+          if (e.key === "ArrowLeft" || e.key === "a") keysRef.current.Left = true;
+          if (e.key === "ArrowRight" || e.key === "d") keysRef.current.Right = true;
+          if (e.key === " " || e.code === "Space") keysRef.current.Space = true;
+        };
+        const handleKeyUp = (e) => {
+          if (e.key === "ArrowLeft" || e.key === "a") keysRef.current.Left = false;
+          if (e.key === "ArrowRight" || e.key === "d") keysRef.current.Right = false;
+          if (e.key === " " || e.code === "Space") keysRef.current.Space = false;
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("keyup", handleKeyUp);
+        return () => {
+          window.removeEventListener("keydown", handleKeyDown);
+          window.removeEventListener("keyup", handleKeyUp);
+        };
+      }, []);
+
+      // Game engine loop
+      useEffect(() => {
+        if (!isEntered || gameOver) return;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        let animationFrameId;
+
+        canvas.width = 400;
+        canvas.height = 500;
+
+        const updateGame = () => {
+          const player = playerRef.current;
+          const now = Date.now();
+
+          // 1. Move Player
+          if (keysRef.current.Left && player.x > 0) player.x -= player.speed;
+          if (keysRef.current.Right && player.x < canvas.width - player.width) player.x += player.speed;
+
+          // 2. Handle Shooting (with a 250ms cooldown)
+          if (keysRef.current.Space && now - lastShotRef.current > 250) {
+            lasersRef.current.push({
+              x: player.x + player.width / 2 - 2,
+              y: player.y,
+              width: 4,
+              height: 15,
+              speed: 8
+            });
+            lastShotRef.current = now;
+          }
+
+          // 3. Spawn Alien Ships Spontaneously
+          if (Math.random() < 0.02) {
+            aliensRef.current.push({
+              x: Math.random() * (canvas.width - 30),
+              y: -30,
+              width: 30,
+              height: 20,
+              speed: 1.5 + Math.random() * 1.5
+            });
+          }
+
+          // 4. Update Lasers
+          lasersRef.current = lasersRef.current.filter(laser => {
+            laser.y -= laser.speed;
+            return laser.y > 0; // Remove if it leaves the top screen
+          });
+
+          // 5. Update Aliens & Collision Checks
+          let crashDetected = false;
+          aliensRef.current = aliensRef.current.filter(alien => {
+            alien.y += alien.speed;
+
+            // Check if alien hits the baseline or player ship
+            const reachedBottom = alien.y > canvas.height;
+            const hitPlayer = 
+              alien.x < player.x + player.width &&
+              alien.x + alien.width > player.x &&
+              alien.y < player.y + player.height &&
+              alien.y + alien.height > player.y;
+
+            if (reachedBottom || hitPlayer) {
+              crashDetected = true;
+              return false;
+            }
+
+            // Check if alien gets hit by any lasers
+            let alienAlive = true;
+            lasersRef.current = lasersRef.current.filter(laser => {
+              const hitAlien = 
+                laser.x < alien.x + alien.width &&
+                laser.x + laser.width > alien.x &&
+                laser.y < alien.y + alien.height &&
+                laser.y + laser.height > alien.y;
+
+              if (hitAlien) {
+                setScore(prev => prev + 100);
+                alienAlive = false; // Destroy the alien
+                return false; // Remove laser
+              }
+              return true;
+            });
+
+            return alienAlive;
+          });
+
+          if (crashDetected) {
+            setGameOver(true);
+            return;
+          }
+
+          // 6. RENDER EVERYTHING TO THE CANVAS
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          // Draw Defender Player Ship (Cyan Neon Triangle style)
+          ctx.fillStyle = "#00ffcc";
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "#00ffcc";
+          ctx.beginPath();
+          ctx.moveTo(player.x + player.width / 2, player.y);
+          ctx.lineTo(player.x, player.y + player.height);
+          ctx.lineTo(player.x + player.width, player.y + player.height);
+          ctx.closePath();
+          ctx.fill();
+
+          // Draw Lasers (Bright Blue beams)
+          ctx.fillStyle = "#00ffff";
+          ctx.shadowColor = "#00ffff";
+          lasersRef.current.forEach(laser => {
+            ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+          });
+
+          // Draw Alien Ships (Hot Pink Invader Blocks)
+          ctx.fillStyle = "#ff00ff";
+          ctx.shadowColor = "#ff00ff";
+          aliensRef.current.forEach(alien => {
+            // Draw a basic space invader crown outline
+            ctx.fillRect(alien.x, alien.y + 5, alien.width, alien.height - 5);
+            ctx.fillRect(alien.x + 5, alien.y, alien.width - 10, 5);
+            // Wing tips
+            ctx.fillRect(alien.x, alien.y + alien.height, 5, 4);
+            ctx.fillRect(alien.x + alien.width - 5, alien.y + alien.height, 5, 4);
+          });
+
+          ctx.shadowBlur = 0; // Clear blur layer
+          animationFrameId = requestAnimationFrame(updateGame);
+        };
+
+        animationFrameId = requestAnimationFrame(updateGame);
+        return () => cancelAnimationFrame(animationFrameId);
+      }, [isEntered, gameOver]);
+
+      const handleHover = (e, isHover) => {
+        e.currentTarget.style.background = isHover ? "#ff00ff" : "transparent";
+        e.currentTarget.style.color = isHover ? "#000" : "#fff";
+        e.currentTarget.style.boxShadow = isHover ? "0 0 20px #00ffff" : "0 0 10px #ff00ff";
+      };
+
+      return (
+        <div style={styles.body}>
+          <div style={styles.stars}></div>
+          <style>{keyframes}</style>
+
+          <div style={styles.container}>
+            <h1 style={styles.h1}>ALIEN INVADER ZONE</h1>
+
+            {!isEntered ? (
+              <React.Fragment>
+                <p style={{ ...styles.p, ...styles.blink }}>
+                  THREAT DETECTED... READY PLASMA WEAPONS
+                </p>
+                <button 
+                  style={styles.btn} 
+                  onClick={handleEnterSite}
+                  onMouseOver={(e) => handleHover(e, true)}
+                  onMouseOut={(e) => handleHover(e, false)}
+                >
+                  INITIALIZE DEFENSE
+                </button>
+              </React.Fragment>
+            ) : (
+              <div style={styles.gameWrapper}>
+                <div style={styles.hud}>
+                  <span>SCORE: {String(score).padStart(5, "0")}</span>
+                  <span style={{ color: gameOver ? "#ff0000" : "#00ffcc" }}>
+                    {gameOver ? "SYSTEM BREACHED" : "SHIELD: ONLINE"}
+                  </span>
+                </div>
+
+                <div style={styles.canvasContainer}>
+                  {gameOver && (
+                    <div style={styles.overlay}>
+                      <h2 style={styles.errorTitle}>GRID LOST</h2>
+                      <p style={{ color: "#fff", marginBottom: "20px" }}>The alien forces breached your matrix.</p>
+                      <button 
+                        style={styles.btn} 
+                        onClick={resetGame}
+                        onMouseOver={(e) => handleHover(e, true)}
+                        onMouseOut={(e) => handleHover(e, false)}
+                      >
+                        REBOOT FIREWALL
+                      </button>
+                    </div>
+                  )}
+                  <canvas ref={canvasRef} style={styles.canvas} />
+                </div>
+                <p style={styles.instructions}>◀ ▶ ARROWS TO MOVE | SPACEBAR TO FIRE LASERS</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Styles Setup
+    const styles = {
+      body: { margin: 0, height: "100vh", backgroundColor: "#120018", fontFamily: '"Courier New", monospace', color: "#fff", overflow: "hidden", position: "relative" },
+      stars: { position: "absolute", width: "100%", height: "100%", background: "radial-gradient(white 1px, transparent 1px)", backgroundSize: "50px 50px", opacity: 0.15, animation: "moveStars 20s linear infinite" },
+      container: { position: "relative", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", zIndex: 1 },
+      h1: { fontSize: "40px", color: "#ff00ff", margin: "10px 0", textTransform: "uppercase", animation: "glow 2s infinite alternate", textAlign: "center" },
+      p: { fontSize: "16px", color: "#00ffff", letterSpacing: "2px", textAlign: "center", padding: "0 10px" },
+      blink: { animation: "blink 1s infinite" },
+      btn: { padding: "12px 30px", border: "2px solid #ff00ff", background: "transparent", color: "#fff", cursor: "pointer", textTransform: "uppercase", fontFamily: '"Courier New", monospace', fontWeight: "bold", transition: "0.2s", boxShadow: "0 0 10px #ff00ff" },
+      gameWrapper: { display: "flex", flexDirection: "column", alignItems: "center", marginTop: "10px" },
+      hud: { width: "400px", display: "flex", justifyContent: "space-between", padding: "10px", border: "2px solid #00ffff", borderBottom: "none", background: "#05000a", color: "#00ffff", boxSizing: "border-box", fontWeight: "bold" },
+      canvasContainer: { position: "relative", width: "400px", height: "500px" },
+      canvas: { border: "2px solid #00ffff", background: "#09000d", boxShadow: "0 0 20px rgba(0, 255, 255, 0.2)" },
+      overlay: { position: "absolute", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(18, 0, 24, 0.9)", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", zIndex: 2 },
+      errorTitle: { fontSize: "36px", color: "#ff0000", margin: "0 0 10px 0", textShadow: "0 0 10px #ff0000" },
+      instructions: { fontSize: "11px", color: "#ff00ff", marginTop: "12px", letterSpacing: "1px" }
+    };
+
+    const keyframes = `
+      @keyframes moveStars { from { transform: translateY(0); } to { transform: translateY(-100px); } }
+      @keyframes glow { from { text-shadow: 0 0 10px #ff00ff; } to { text-shadow: 0 0 25px #00ffff; } }
+      @keyframes blink { 50% { opacity: 0; } }
+    `;
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<AlienGame />);
+  </script>
+</body>
+</html>
