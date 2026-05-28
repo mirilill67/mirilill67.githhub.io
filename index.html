@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Y2K: Alien Space Interceptor (Fleet Multiplication)</title>
+  <title>Y2K: Global Defense Matrix (Protect Our World)</title>
   
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -21,23 +21,28 @@
       const [score, setScore] = useState(0);
       
       const [highScore, setHighScore] = useState(() => {
-        const saved = localStorage.getItem("y2k_high_score");
+        const saved = localStorage.getItem("y2k_global_high_score");
         return saved ? parseInt(saved, 10) : 0;
       });
 
       const canvasRef = useRef(null);
-      const player = useRef({ x: 185, y: 440, width: 30, height: 25, speed: 8 });
+      // Increased dynamic range of player movement/speed for defense
+      const player = useRef({ x: 185, y: 410, width: 30, height: 25, speed: 8.5 });
       const keys = useRef({ Left: false, Right: false, Space: false });
       const lasers = useRef([]);
       const aliens = useRef([]);
       const lastFired = useRef(0);
+      
+      // NEW: State variables to track the globe rotation frame rate
+      const [globeRotationOffset, setGlobeRotationOffset] = useState(0);
+      const globeRotationRef = useRef(0);
 
       const scoreRef = useRef(0);
       useEffect(() => {
         scoreRef.current = score;
       }, [score]);
 
-      // Keyboard Input Mapping
+      // Handle Keyboard Input Buffers
       useEffect(() => {
         const handleKeyDown = (ev) => {
           if (ev.key === "ArrowLeft" || ev.key === "a" || ev.key === "A") keys.current.Left = true;
@@ -64,7 +69,7 @@
           const nextScore = prev + points;
           if (nextScore > highScore) {
             setHighScore(nextScore);
-            localStorage.setItem("y2k_high_score", nextScore.toString());
+            localStorage.setItem("y2k_global_high_score", nextScore.toString());
           }
           return nextScore;
         });
@@ -101,13 +106,14 @@
         const ctx = canvas.getContext("2d");
         let animationFrameId;
 
+        // Dynamic matrix configuration parameters
         canvas.width = 400;
         canvas.height = 500;
 
         const loop = () => {
           const now = Date.now();
 
-          // Move Player
+          // Smooth Player Vessel Translation
           if (keys.current.Left && player.current.x > 0) {
             player.current.x -= player.current.speed;
           }
@@ -115,32 +121,32 @@
             player.current.x += player.current.speed;
           }
 
-          // Laser Handling
-          if (keys.current.Space && now - lastFired.current > 200) {
+          // Main Laser Deployment Matrix
+          if (keys.current.Space && now - lastFired.current > 180) { // Slightly increased rate of fire to match tempo
             lasers.current.push({
               x: player.current.x + player.current.width / 2 - 2,
               y: player.current.y,
               width: 4,
               height: 14,
-              speed: 11
+              speed: 12 // Fast laser travel speed
             });
             lastFired.current = now;
           }
 
-          // NEW: Calculate max simultaneous alien ships allowed based on score increments of 500
-          // Starts at 1 ship maximum, increases by +1 ship every 500 points
-          const maxAliensOnScreen = 1 + Math.floor(scoreRef.current / 500);
+          // Evolving Fleet Deployment Limits (Staggered scaling)
+          const maxAliensOnScreen = 1 + Math.floor(scoreRef.current / 400); // Higher density for faster progression
 
-          // Only attempt to spawn a new ship if the active fleet is under the current limit
+          // Only attempt to spawn new ships if the active fleet is below the limit threshold
           if (aliens.current.length < maxAliensOnScreen) {
-            // A small random chance modifier keeps spawns staggered naturally instead of grouping up instantly
-            if (Math.random() < 0.05) {
+            // Random chance parameter to introduce staggered spawn groupings
+            if (Math.random() < 0.06) { // More consistent spawning for intensity
               aliens.current.push({
                 x: Math.random() * (canvas.width - 32),
                 y: -25,
                 width: 32,
                 height: 22,
-                speed: 1.8 + Math.random() * 1.5 // Stable, balanced downward speed profile
+                // Higher alien baseline velocity range for intense defensive gameplay
+                speed: 2.5 + Math.random() * 2.2 
               });
             }
           }
@@ -150,20 +156,27 @@
             return laser.y > 0;
           });
 
-          let terminalBreach = false;
+          let terminalGlobalBreach = false;
 
           aliens.current = aliens.current.filter(alien => {
             alien.y += alien.speed;
 
-            const boundaryBreach = alien.y > canvas.height;
+            // Globe Reach Collision Detection (GAME OVER State Trigger)
+            // End the game immediately if an alien reaches the vulnerable sphere
+            const globeBreachHeight = canvas.height - 40; 
+            if (alien.y > globeBreachHeight) {
+              terminalGlobalBreach = true;
+              return false;
+            }
+
             const kineticImpact = 
               alien.x < player.current.x + player.current.width &&
               alien.x + alien.width > player.current.x &&
               alien.y < player.current.y + player.current.height &&
               alien.y + alien.height > player.current.y;
 
-            if (boundaryBreach || kineticImpact) {
-              terminalBreach = true;
+            if (kineticImpact) {
+              terminalGlobalBreach = true;
               return false;
             }
 
@@ -186,14 +199,72 @@
             return alienSurvived;
           });
 
-          if (terminalBreach) {
+          if (terminalGlobalBreach) {
             setGameState("GAMEOVER");
             return;
           }
+          
+          // Increment the rotation loop counter for the globe object
+          globeRotationRef.current += 0.012;
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // Player Triangle
+          // RENDER: Stylized Y2K Rotating Cyber Globe (Protect This Matrix Object)
+          const drawCyberGlobe = () => {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height - 10;
+            const radius = 60; // Standard matrix scale globe radius
+
+            // Define Global Render styles (Aesthetic glowing blue sphere profile)
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#00ffff"; // Main cyan/blue neon glow layer
+            ctx.fillStyle = "rgba(0, 255, 255, 0.15)"; // Soft blue sphere matrix core
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, radius, Math.PI, 0); // Arc defined baseline (half-sphere)
+            ctx.fill();
+
+            // Clear glow blur layer cache
+            ctx.shadowBlur = 0; 
+            ctx.strokeStyle = "#00ffff"; // Glowing grid lines structure color definition
+            ctx.lineWidth = 1;
+
+            // Draw dynamic latitude line matrix structure (Staggered arcs)
+            for (let lat = 10; lat <= radius - 10; lat += 15) {
+              const span = radius - lat;
+              const angle = Math.acos(span / radius);
+              const chordLength = Math.sin(angle) * radius;
+              
+              ctx.beginPath();
+              // Adjust baseline latitude arc geometry for 3D sphere perspective simulation
+              ctx.arc(centerX, centerY, chordLength, Math.PI, 0, false);
+              ctx.stroke();
+            }
+
+            // Draw rotating longitude line matrix structure (Simulates rotation frame loop)
+            const numLines = 8;
+            for (let i = 0; i < numLines; i++) {
+              // Calculate dynamic angular line projection offsets with continuous rotation multiplier
+              const angleOffset = (i / numLines * Math.PI * 2) + globeRotationRef.current;
+              // Adjust the curve parameter to change line distortion profile
+              const curveParam = radius / 2 * Math.sin(angleOffset);
+              
+              ctx.beginPath();
+              ctx.moveTo(centerX - radius, centerY);
+              // Use quadratic curves to define the meridian line profile matrix
+              ctx.quadraticCurveTo(centerX + curveParam * 2, centerY - radius * 1.6, centerX + radius, centerY);
+              ctx.stroke();
+            }
+            
+            // Baseline object terminator boundary line definition
+            ctx.beginPath();
+            ctx.moveTo(centerX - radius, centerY);
+            ctx.lineTo(centerX + radius, centerY);
+            ctx.stroke();
+          };
+          
+          drawCyberGlobe(); // Fire the globe object render logic function loop
+
+          // RENDER: Player Vessel (Cyan Plasma Triangle Profile configuration)
           ctx.fillStyle = "#00ffcc";
           ctx.shadowBlur = 12;
           ctx.shadowColor = "#00ffcc";
@@ -204,17 +275,18 @@
           ctx.closePath();
           ctx.fill();
 
-          // Lasers
+          // RENDER: Plasma Lasers (Glowing Blue Beam Profile)
           ctx.fillStyle = "#00ffff";
           ctx.shadowColor = "#00ffff";
           lasers.current.forEach(laser => {
             ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
           });
 
-          // Alien Ships
+          // RENDER: Alien Invasion Ships (Y2K Neon Magenta Geometric Invader Chassis profile)
           ctx.fillStyle = "#ff00ff";
           ctx.shadowColor = "#ff00ff";
           aliens.current.forEach(alien => {
+            // Primary geometric invader geometry outline matrix
             ctx.fillRect(alien.x + 4, alien.y, alien.width - 8, 6);
             ctx.fillRect(alien.x, alien.y + 6, alien.width, 8);
             ctx.fillRect(alien.x + 2, alien.y + 14, 6, 6);
@@ -223,6 +295,7 @@
             ctx.fillRect(alien.x + alien.width - 12, alien.y + 20, 4, 2);
           });
 
+          // Clear global shadow layer cache buffer entirely
           ctx.shadowBlur = 0;
           animationFrameId = requestAnimationFrame(loop);
         };
@@ -246,33 +319,34 @@
         event.currentTarget.style.boxShadow = isHovered ? "0 0 20px #00ffff" : "0 0 10px #ff00ff";
       };
 
-      // Calculate current maximum allowed units dynamically for the UI readout panel
-      const currentFleetLimit = 1 + Math.floor(score / 500);
+      // Current difficulty tier multiplier evaluation function for UI info readout label
+      const activeMultiplier = 1 + Math.floor(score / 400);
 
       return e('div', { style: styles.body },
         e('div', { style: styles.stars }),
         e('style', null, cssKeyframes),
         e('div', { style: styles.viewContainer },
-          e('h1', { style: styles.mainTitle }, "CYBER DEFENDER Y2K"),
+          // Title revised to match narrative storyline (Global Defense Matrix configuration)
+          e('h1', { style: styles.mainTitle }, "GLOBAL DEFENDER Y2K"),
           
           gameState === "START" && e('div', { style: styles.uiBox },
-            e('p', { style: { ...styles.subtitle, ...styles.blinkEffect } }, "STAGGERED ESCALATION PROTOCOLS ACTIVE"),
-            e('p', { style: { color: "#00ffcc", fontSize: "14px", marginBottom: "30px" } }, `SYSTEM ALL-TIME HIGH: ${String(highScore).padStart(5, "0")}`),
+            e('p', { style: { ...styles.subtitle, ...styles.blinkEffect } }, "INVASION CONFIRMED... THE GLOBE IS IN DANGER!"),
+            e('p', { style: { color: "#00ffcc", fontSize: "14px", marginBottom: "30px" } }, `DEFENSE RECORD: ${String(highScore).padStart(5, "0")} UNITS SAVED`),
             e('button', {
               style: styles.actionBtn,
               onClick: startMatch,
               onMouseOver: (evt) => setNeonStyles(evt, true),
               onMouseOut: (evt) => setNeonStyles(evt, false)
-            }, "INITIALIZE MATRIX")
+            }, "DEPLOY PLASMA NETWORK")
           ),
 
           gameState === "PLAYING" && e('div', { style: styles.gameWrapper },
             e('div', { style: styles.hudPanel },
               e('div', { style: { display: "flex", flexDirection: "column" } },
-                e('span', null, `SCORE: ${String(score).padStart(5, "0")}`),
+                e('span', null, `SAVED: ${String(score).padStart(5, "0")} UNITS`),
                 e('span', { style: { fontSize: "11px", color: "#ff00ff", marginTop: "2px" } }, `HI-SCORE: ${String(highScore).padStart(5, "0")}`)
               ),
-              e('span', { style: { color: "#00ffcc", textAlign: "right" } }, `MAX FLEET SIZE: ${currentFleetLimit}`)
+              e('span', { style: { color: "#00ffcc", textAlign: "right" } }, "PROTECTING OUR WORLD")
             ),
             e('div', { style: styles.canvasContainer },
               e('canvas', { 
@@ -285,15 +359,16 @@
           ),
 
           gameState === "GAMEOVER" && e('div', { style: styles.uiBox },
-            e('h2', { style: styles.defeatHeader }, "SYSTEM OVERRIDE"),
-            e('p', { style: { color: "#ffffff", marginBottom: "10px", fontSize: "15px" } }, `Final Output Score: ${score}`),
-            e('p', { style: { color: "#00ffff", marginBottom: "25px", fontSize: "13px" } }, score >= highScore && score > 0 ? "🔥 NEW DATABASE LOCAL RECORD EXTRACTION!" : `Database Max Record: ${highScore}`),
+            // GAME OVER narrative adjusted to reflect storyline (BREACHED state)
+            e('h2', { style: styles.defeatHeader }, "GLOBE BREACHED!"),
+            e('p', { style: { color: "#ffffff", marginBottom: "10px", fontSize: "15px" } }, `Alien forces have made contact with the matrix core.`),
+            e('p', { style: { color: "#00ffff", marginBottom: "25px", fontSize: "13px" } }, score >= highScore && score > 0 ? "🔥 NEW LOCAL DEFENSE NETWORK RECORD ACTIVE!" : `Your Final Defense Tally: ${score}`),
             e('button', {
               style: styles.actionBtn,
               onClick: startMatch,
               onMouseOver: (evt) => setNeonStyles(evt, true),
               onMouseOut: (evt) => setNeonStyles(evt, false)
-            }, "REBOOT CORE SYSTEM")
+            }, "REBOOT DEFENSE PROTOCOLS")
           )
         )
       );
